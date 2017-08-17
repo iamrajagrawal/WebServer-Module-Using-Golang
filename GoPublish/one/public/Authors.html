@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" ng-app="authorApp">
+<head>
+<meta charset="utf-8">
+<script src='angular-1.1.5/angular.min.js'></script>
+<script>
+function Author(code,name){
+this.code=code;
+this.name=name;
+}
+var authorModule=angular.module("authorApp",[]);
+authorModule.service("authorService",function($http){
+this.getAuthors=function(){
+var promise=$http.get("/one/GetAuthors.go");
+return promise;
+};
+this.addAuthor=function(author){
+var promise=$http({
+method: "POST",
+url: "/one/AddAuthor.go",
+type: "text",
+params: {
+name: author.name
+}}
+);
+return promise;
+};
+});
+authorModule.controller("authorController",function($scope,authorService){
+$scope.author=new Author(0,"");
+$scope.authorsLoaded=false;
+$scope.moduleTitle="Authors";
+$scope.mode="VIEW";
+loadAuthors();
+function loadAuthors(){
+var promise=authorService.getAuthors();
+promise.then(function(response){
+var authors=new Array();
+var a;
+var res=response.data;
+var splits=res.split(",");
+var i=0;
+while(i<splits.length)
+{ 
+a=new Author(parseInt(splits[i]),splits[i+1]);
+authors[authors.length]=a;
+i=i+2;
+}
+$scope.authors=authors;
+$scope.authorsLoaded=true;
+},function(){
+alert('Some problem');
+});
+}
+$scope.addAuthor=function(){
+var a=new Author(0,$scope.author.name);
+var promise=authorService.addAuthor(a);
+promise.then(function(response){
+var res=response.data;
+if(res=="PROBLEM"){
+alert("Some problem");
+return;
+}
+var splits=res.split(",");
+if(splits[0]=="true"){
+a.code=parseInt(splits[0]);
+a.name=splits[1];
+$scope.authors[$scope.authors.length]=a;
+$scope.mode="VIEW";
+}else {
+alert(splits[1]);
+}
+},function(){
+alert('Cannot add, try after some time');
+});
+}
+$scope.setAddMode=function() {
+$scope.mode="ADD";
+}}
+);
+</script>
+</head>
+<body ng-controller="authorController">
+<h1>{{moduleTitle}}</h1>
+<div ng-if='mode=="ADD"'>
+<form>
+Author
+<input type='text' ng-model="author.name" >
+<br>
+<button type='button' ng-click='addAuthor()'>Add</button>
+</form>
+</div>
+<div ng-if='authorsLoaded==false && mode=="VIEW"'>
+<img src='images/loading.gif'>
+</div>
+<div ng-if='authorsLoaded==true && mode=="VIEW"'>
+<button ng-click='setAddMode()'>Add</button>
+<table border='1'>
+<thead>
+<tr>
+<th>S.No</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr ng-repeat='author in authors'>
+<td>{{$index+1}}</td>
+<td>{{author.name}}</td>
+</tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>
